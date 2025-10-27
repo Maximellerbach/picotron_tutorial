@@ -16,7 +16,6 @@ if __name__ == "__main__":
     dist.init_process_group(backend=backend)
     rank = dist.get_rank()
 
-
     # rank 0 receives from all other ranks
     if rank == 0:
         recv_tensor = torch.zeros(2, dtype=torch.int64, device=device)

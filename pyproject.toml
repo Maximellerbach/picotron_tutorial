@@ -1,0 +1,15 @@
+[project]
+name = "picotron-tutorial"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=4.2.0",
+    "debugpy>=1.8.17",
+    "lovely-tensors>=0.1.19",
+    "numpy>=2.3.4",
+    "torch>=2.9.0",
+    "transformers>=4.57.1",
+    "wandb>=0.22.2",
+]
