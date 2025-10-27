@@ -41,3 +41,13 @@ torchrun --nproc_per_node 8 train.py --tp_size 2 --pp_size 2 --pp_engine 1f1b --
 ```bash
 uv run debugpy-run -m torch.distributed.run -p 5678 -- --nproc_per_node 1 step1_modeling/train.py
 ```
+
+### multi-node 
+
+using different ports to debug each nodes
+
+```bash
+debugpy-run -m torch.distributed.run -p 5678 -- --nproc_per_node 2 --nnodes 2 --node_rank 0 --master_addr localhost --master_port 25500 experiments/parallel.py
+
+debugpy-run -m torch.distributed.run -p 5679 -- --nproc_per_node 2 --nnodes 2 --node_rank 1 --master_addr localhost --master_port 25500 experiments/parallel.py
+```
