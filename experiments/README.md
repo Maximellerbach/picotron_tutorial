@@ -1,0 +1,5 @@
+## Experiments
+
+TODO:
+
+reduce scatter 

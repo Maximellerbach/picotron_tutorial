@@ -14,7 +14,6 @@ class SimpleModule(torch.nn.Module):
 
     def forward(self, x):
         x = self.linear1(x)
-        x = F.relu(x)
         return x
 
 if __name__ == "__main__":
@@ -40,6 +39,16 @@ if __name__ == "__main__":
         },
     )
 
-    input_tensor = torch.randn(4, 4, device=device)
-    output = sharded(input_tensor)
-    print(f"rank: {global_rank}, output: {output.detach().numpy()}")
+    input_tensor = torch.randn(2, 4, device=device)
+    sharded_out = sharded(input_tensor) # shape (2, 2)
+    print(f"rank: {global_rank}, output: {sharded_out.detach().numpy()}")
+
+    # reconstruct full output for verification
+    full_output = torch.zeros(2, 4, device=device)
+    dist.all_gather(
+        [full_output[:, i*2:(i+1)*2] for i in range(world_size)],
+        sharded_out,
+    )
+
+    if global_rank == 0:
+        print(f"Reconstructed full output: {full_output.detach().numpy()}")
