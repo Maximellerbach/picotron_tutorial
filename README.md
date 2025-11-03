@@ -51,3 +51,10 @@ debugpy-run -m torch.distributed.run -p 5678 -- --nproc_per_node 2 --nnodes 2 --
 
 debugpy-run -m torch.distributed.run -p 5679 -- --nproc_per_node 2 --nnodes 2 --node_rank 1 --master_addr localhost --master_port 25500 experiments/parallel.py
 ```
+
+## Column-wise vs Row-wise parallelism
+
+![colwise](ressources/colwise.png)
+
+
+![rowwise](ressources/rowwise.png)
