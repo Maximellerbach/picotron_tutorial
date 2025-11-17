@@ -1,11 +1,7 @@
 import torch
 import torch.distributed as dist
 from parallel import (
-    split_tensor,
-    row_parallel_linear_forward,
-    row_parallel_linear_backward,
-    column_parallel_linear_forward,
-    column_parallel_linear_backward,
+    AllGather, AllReduce
 )
 
 
@@ -21,7 +17,7 @@ class ColumnParallelLinear(torch.nn.Module):
         self.weight.retain_grad()
 
     def forward(self, X):
-        return column_parallel_linear_forward(X, self.weight)
+        return (X @ self.weight)
 
 
 class RowParallelLinear(torch.nn.Module):
@@ -36,7 +32,9 @@ class RowParallelLinear(torch.nn.Module):
         self.weight.retain_grad()
 
     def forward(self, X):
-        return row_parallel_linear_forward(X, self.weight)
+        Y = (X @ self.weight)
+        Y = AllReduce.apply(Y)
+        return Y
 
 
 class CombinedLinear(torch.nn.Module):
