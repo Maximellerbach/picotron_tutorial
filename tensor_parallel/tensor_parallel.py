@@ -2,7 +2,7 @@
 import torch
 import torch.distributed as dist
 import os
-from model import CombinedLinear
+from model import CombinedLinear, ColumnParallelLinear, RowParallelLinear
 
 if __name__ == "__main__":
     device = torch.device("cpu")
@@ -22,11 +22,25 @@ if __name__ == "__main__":
 
     dist.broadcast(X, src=0)
     dist.broadcast(Y, src=0)
+    # X.retain_grad()
 
     model = CombinedLinear(4, 8).to(device)
     loss_fn = torch.nn.MSELoss()
-    pred = model(X)
-    loss = loss_fn(pred, Y)
-    loss.backward()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
-    print(f"Rank {rank}, Loss: {loss.item()}")
+    # training loop
+    for it in range(100):
+
+        pred = model(X)
+        loss = loss_fn(pred, Y)
+        loss.backward()
+
+        optimizer.step() 
+        optimizer.zero_grad()
+
+        # in case of data parrallel,
+        # sum gradients across data parallel ranks
+
+        if rank == 0 and it % 10 == 0:
+            print(f"Iter {it}, Loss: {loss.item()}")
+    

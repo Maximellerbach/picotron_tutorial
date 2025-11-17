@@ -1,43 +1,51 @@
-import torch.distributed as dist
 import torch
-import torch.nn.functional as F
+import torch.distributed as dist
+from parallel import (
+    split_tensor,
+    row_parallel_linear_forward,
+    row_parallel_linear_backward,
+    column_parallel_linear_forward,
+    column_parallel_linear_backward,
+)
 
-class ColwiseLinear(torch.nn.Module):
-    def __init__(self, in_f, out_f, gather_output=True):
-        super().__init__()
-        self.rank = dist.get_rank()
-        self.world = dist.get_world_size()
-        self.local_out = out_f // self.world
-        self.W = torch.nn.Parameter(torch.randn(in_f, self.local_out) * 0.02)
-        self.b = torch.nn.Parameter(torch.zeros(self.local_out))
 
-        self.gather_output = gather_output
+class ColumnParallelLinear(torch.nn.Module):
+    def __init__(self, input_size, output_size):
+        super(ColumnParallelLinear, self).__init__()
+        self.input_size = input_size
+        self.output_size = output_size
+        self.weight = torch.nn.Parameter(
+            torch.randn(input_size, output_size // dist.get_world_size()),
+            requires_grad=True,
+        )
+        self.weight.retain_grad()
 
-    def forward(self, x):  # x: [B, in_f]
-        return F.linear(x, self.W, self.b)
+    def forward(self, X):
+        return column_parallel_linear_forward(X, self.weight)
 
-class RowwiseLinear(torch.nn.Module):
-    def __init__(self, in_f, out_f):
-        super().__init__()
-        self.rank = dist.get_rank()
-        self.world = dist.get_world_size()
-        self.local_in = in_f // self.world
-        self.W = torch.nn.Parameter(torch.randn(self.local_in, out_f))
-        self.b = torch.nn.Parameter(torch.zeros(out_f))
 
-    def forward(self, x):
-        output_parallel = F.linear(x, self.W)
-        dist.all_reduce(output_parallel, op=dist.ReduceOp.SUM)
-        return output_parallel + self.b
+class RowParallelLinear(torch.nn.Module):
+    def __init__(self, input_size, output_size):
+        super(RowParallelLinear, self).__init__()
+        self.input_size = input_size
+        self.output_size = output_size
+        self.weight = torch.nn.Parameter(
+            torch.randn(output_size // dist.get_world_size(), input_size),
+            requires_grad=True,
+        )
+        self.weight.retain_grad()
+
+    def forward(self, X):
+        return row_parallel_linear_forward(X, self.weight)
 
 
 class CombinedLinear(torch.nn.Module):
-    def __init__(self, in_f, out_f):
-        super().__init__()
-        self.col = ColwiseLinear(in_f, out_f)
-        self.row = RowwiseLinear(out_f, out_f)
+    def __init__(self, input_size, output_size):
+        super(CombinedLinear, self).__init__()
+        self.col_linear = ColumnParallelLinear(input_size, output_size)
+        self.row_linear = RowParallelLinear(output_size, output_size)
 
-    def forward(self, x):
-        x = self.col(x)
-        x = self.row(x)
-        return x
+    def forward(self, X):
+        Y_col = self.col_linear.forward(X)
+        Y = self.row_linear.forward(Y_col)
+        return Y
