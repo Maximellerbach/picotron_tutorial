@@ -47,3 +47,23 @@ class CombinedLinear(torch.nn.Module):
         Y_col = self.col_linear.forward(X)
         Y = self.row_linear.forward(Y_col)
         return Y
+
+class Attention(torch.nn.Module):
+    def __init__(self, input_size, output_size):
+        super(Attention, self).__init__()
+        self.query_linear = ColumnParallelLinear(input_size, output_size)
+        self.key_linear = ColumnParallelLinear(input_size, output_size)
+        self.value_linear = ColumnParallelLinear(input_size, output_size)
+        self.output_linear = RowParallelLinear(output_size, output_size)
+
+    def forward(self, X):
+        Q = self.query_linear.forward(X)
+        K = self.key_linear.forward(X)
+        V = self.value_linear.forward(X)
+
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / (K.size(-1) ** 0.5)
+        attn_weights = torch.nn.functional.softmax(scores, dim=-1)
+        attn_output = torch.matmul(attn_weights, V)
+
+        output = self.output_linear.forward(attn_output)
+        return output

@@ -2,7 +2,7 @@
 import torch
 import torch.distributed as dist
 import os
-from model import CombinedLinear, ColumnParallelLinear, RowParallelLinear
+from model import CombinedLinear, Attention
 
 if __name__ == "__main__":
     device = torch.device("cpu")
@@ -22,9 +22,8 @@ if __name__ == "__main__":
 
     dist.broadcast(X, src=0)
     dist.broadcast(Y, src=0)
-    # X.retain_grad()
 
-    model = CombinedLinear(4, 8).to(device)
+    model = Attention(4, 8).to(device)
     loss_fn = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
